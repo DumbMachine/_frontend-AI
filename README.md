@@ -13,6 +13,7 @@ AI Part and Backend Server of SIH Hackathon's Frontend team's Project.
 ![imageedit_2_4725234449](https://user-images.githubusercontent.com/23381512/89102983-d7f41000-d42b-11ea-8225-20b4527e6c02.gif)
 
 # EXAMPLE of Simple Probability Plot:
+![Capture](https://user-images.githubusercontent.com/23381512/89103175-73d24b80-d42d-11ea-9fe2-e80e6c7a0508.PNG)
 <iframe src="./fastapi/test.html">
 <iframe src="https://www.w3schools.com/tags/tag_iframe.asp">
 
