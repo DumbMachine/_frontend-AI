@@ -1,7 +1,12 @@
 import math
+import folium
 import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
+from temp import *
 pi = math.pi
+MOD = 0.0015
 
 def get_geojson_grid(upper_right, lower_left, n=6):
     """Returns a grid of geojson rectangles, and computes the exposure in each section of the grid based on the vessel data.
@@ -9,10 +14,10 @@ def get_geojson_grid(upper_right, lower_left, n=6):
     Parameters
     ----------
     upper_right: array_like
-        The upper right hand corner of "grid of grids" (the default is the upper right hand [lat, lon] of the USA).
+        The upper right hand corner of "grid of grids"s.
 
     lower_left: array_like
-        The lower left hand corner of "grid of grids"  (the default is the lower left hand [lat, lon] of the USA).
+        The lower left hand corner of "grid of grids" s.
 
     n: integer
         The number of rows/columns in the (n,n) grid.
@@ -51,8 +56,8 @@ def get_geojson_grid(upper_right, lower_left, n=6):
 
             geo_json = {"type": "FeatureCollection",
                         "properties": {
-                            "lower_left": lower_left,
-                            "upper_right": upper_right
+                            "lower_left": lower_left[::-1],
+                            "upper_right": upper_right[::-1]
                         },
                         "features": []}
 
@@ -71,45 +76,69 @@ def get_geojson_grid(upper_right, lower_left, n=6):
     return all_boxes
 
 
-
-def PointsInCircum(_x,y, r,n=100):
+def PointsInCircum(_x, y, r, n=100):
     ret = []
-    r = 3*r
-    for x in range(0,n+1):
-        ret.append(
-            (
+    for x in range(0, n+1):
+        ret.append((
                 _x+float(math.cos(2*pi/n*x)*r),
                 y+float(math.sin(2*pi/n*x)*r)
-            )
-        )
-    return ret 
+            ))
+    return ret
 
-def all_grid(grids, centers):
-    """
-    Assign prob to all the grids
-    """
-    for grid in grids:
-        _points = grid["features"][0]["geometry"]["coordinates"][0][:-1]
-        xx, yy = zip(*_points)
-        centroid = (sum(xx) / len(_points), sum(yy) / len(_points))
-        temp =  assign_prob(centroid, centers)
-        grid["prob_dist"] = sum(temp)
-    return grids
 
-def assign_prob(centroid, centers):
+# def all_grid(grids, centers, rec):
+#     """
+#     Assign prob to all the grids
+#     """
+#     xx, yy = zip(*rec)
+#     min_x = min(xx)
+#     min_y = min(yy)
+#     max_x = max(xx)
+#     max_y = max(yy)
+
+#     lat_steps = np.linspace(min_x, max_x, 3)
+
+#     for grid in grids:
+#         _points = grid["features"][0]["geometry"]["coordinates"][0][:-1]
+#         xx, yy = zip(*_points)
+#         centroid = (sum(xx) / len(_points), sum(yy) / len(_points))
+#         temp = assign_prob(centroid, centers)
+#         grid["prob"] = sum(temp)
+#     return grids
+
+def all_grid(grid, centers):
     """
-    Assign probability of the `point` by comparing the distance with the centers
+    Assign prob to all the grid
     """
-    prob = []
+    for _grid in grid:
+        _grid["prob"] = assign_prob(_grid, centers)
+        color = plt.cm.Greens(_grid["prob"])
+        color = mpl.colors.to_hex(color)
+        _grid["color"] = color
+    return grid
+
+
+def assign_prob(geo_json, centers):
+    _points = geo_json["features"][0]["geometry"]["coordinates"][0][:-1]
+    xx, yy = zip(*_points)
+    centroid = (sum(xx) / len(_points), sum(yy) / len(_points))[::-1]
+    prob = 0
     for center in centers:
-        distance = cal_dist(*centroid, *center["center"])
-        strip_no = check_range(distance, center["radius"])
-        if strip_no is not None:
-            prob.append(center["trust"] * center["strip"][strip_no])
+        distance = distance_(centroid, center["center"])
+        radius = center["rad_strips"]
+        if distance <= radius[0]:
+            prob+=0.5*center["trust"]
+        elif distance >= radius[0] and distance <= radius[1]:
+            prob+=0.3*center["trust"]
+        elif distance >= radius[1] and distance <= radius[2]:
+            prob+=0.17*center["trust"]
+        else:
+            prob+=0*center["trust"]
+
     return prob
 
 
-def check_range(distance, radius):
+def check_range_circle(distance, radius):
     """
     Check in which range of the radius does the distance lie in
     """
@@ -117,11 +146,48 @@ def check_range(distance, radius):
         prob = 0
     elif distance > radius and distance < 2*radius:
         prob = 1
-    elif distance > 2* radius and distance < 3*radius:
+    elif distance > 2 * radius and distance < 3*radius:
         prob = 2
     else:
-        prob = None
+        prob = -1
     return prob
+
+def plot_circles(circle, all_three=False):
+    """
+    Plotting all the three circles
+    ---------------------------------
+    Example: 
+        {
+                "center": [29.961542, 76.823127],
+                "radius": 120,
+                "strip": [0.5, 0.17, 0.06],
+                "color": 'crimson',
+                "trust": 69
+        }
+    """
+    import folium
+
+    points, points1, points2 = [], [] ,[]
+
+    x, y = circle["center"]
+    points.extend(PointsInCircum(x, y, circle['radius']*0.0015, n=100))
+    points1.extend(PointsInCircum(x, y, circle['radius']*2*0.0015, n=100))
+    points2.extend(PointsInCircum(x, y, circle['radius']*3*0.0015, n=100))
+
+    folium.PolyLine(points).add_to(m)
+    folium.PolyLine(points1).add_to(m)
+    folium.PolyLine(points2).add_to(m)
+
+
+def check_range_rectangle(lat, lat_steps):
+    """
+    Check in which range of the radius does the distance lie in
+    """
+    for i in range(len(lat_steps)-1):
+        renge = (lat_steps[i], lat_steps[i+1])
+        if renge[0] < lat and lat > renge[1]:
+            return i
+    return None
 
 def cal_dist(x1, y1, x2, y2):
     """

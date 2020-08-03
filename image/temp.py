@@ -1,11 +1,7 @@
 import math
 import numpy as np
 
-{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {}, "geometry": {"type": "Polygon", "coordinates": [
-    [[-121.8013, 38.476169], [-121.8013, 39.014916], [-121.216278, 39.014916], [-121.216278, 38.476169], [-121.8013, 38.476169]]]}}]}
-
-
-def distance(origin, destination):
+def distance_(origin, destination):
     """
     Calculate the Haversine distance.
 
@@ -81,3 +77,8 @@ def displace(lat, lng, theta, distance):
 
     return to_degrees(lat2), to_degrees(lng2)
  
+def angle_between_vectors_degrees(u, v):
+    """Return the angle between two vectors in any dimension space,
+    in degrees."""
+    return np.degrees(
+        math.acos(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))))
