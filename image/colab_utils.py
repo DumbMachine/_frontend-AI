@@ -7,6 +7,7 @@ import folium
 from PIL import Image, ImageChops
 import matplotlib.pyplot as plt
 import numpy as np
+from selenium import webdriver
 
 
 def gallery(array, ncols=3):
