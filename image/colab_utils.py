@@ -1,18 +1,24 @@
+import math
+import uuid
+import cv2
+import matplotlib as mpl
+import random
+import folium
+from PIL import Image, ImageChops
+import matplotlib.pyplot as plt
+import numpy as np
+
+
 def gallery(array, ncols=3):
     nindex, height, width, intensity = array.shape
     nrows = nindex//ncols
     assert nindex == nrows*ncols
     # want result.shape = (height*nrows, width*ncols, intensity)
     result = (array.reshape(nrows, ncols, height, width, intensity)
-              .swapaxes(1,2)
+              .swapaxes(1, 2)
               .reshape(height*nrows, width*ncols, intensity))
     return result
 
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
-
-from PIL import Image, ImageChops
 
 def autocrop(image, threshold=0):
     """Crops any edges below or equal to threshold
@@ -36,25 +42,19 @@ def autocrop(image, threshold=0):
         return None, None
 
 
-
 def image_change(image, old_image):
     im1 = Image.fromarray(image)
     im2 = Image.fromarray(old_image)
     diff = ImageChops.difference(im2, im1)
-    
-    cols, rows = autocrop(np.array(diff))
-    
-    return cv2.rectangle(image.copy(), (rows[0] , cols[0]), (rows[-1] + 1, cols[-1] + 1), (0, 255, 0), 2)
 
-import math
-import folium
-import random
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+    cols, rows = autocrop(np.array(diff))
+
+    return cv2.rectangle(image.copy(), (rows[0], cols[0]), (rows[-1] + 1, cols[-1] + 1), (0, 255, 0), 2)
+
 
 pi = math.pi
 MOD = 0.0015
+
 
 def location_pic(location, driver=None, zoom=20, tiles=None):
     filename = str(uuid.uuid4())
@@ -63,19 +63,22 @@ def location_pic(location, driver=None, zoom=20, tiles=None):
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
-        driver = webdriver.Chrome('chromedriver',chrome_options=chrome_options)
+        driver = webdriver.Chrome(
+            'chromedriver', chrome_options=chrome_options)
 
     if tiles is None:
         world_map = folium.Map(
             location=location, zoom_start=zoom
-            )
+        )
     else:
-        world_map = folium.Map(location=location,  zoom_start=zoom, tiles=tiles)
+        world_map = folium.Map(
+            location=location,  zoom_start=zoom, tiles=tiles)
     world_map.save("temp.html")
     driver .get("file:///content/temp.html")
     time.sleep(3)
     driver.save_screenshot(f'images/{filename}.png')
     return f'images/{filename}.png'
+
 
 def get_geojson_grid(upper_right, lower_left, n=6):
     """Returns a grid of geojson rectangles, and computes the exposure in each section of the grid based on the vessel data.
@@ -149,9 +152,9 @@ def PointsInCircum(_x, y, r, n=100):
     ret = []
     for x in range(0, n+1):
         ret.append((
-                _x+float(math.cos(2*pi/n*x)*r),
-                y+float(math.sin(2*pi/n*x)*r)
-            ))
+            _x+float(math.cos(2*pi/n*x)*r),
+            y+float(math.sin(2*pi/n*x)*r)
+        ))
     return ret
 
 
@@ -176,13 +179,13 @@ def assign_prob(geo_json, centers):
         distance = distance_(centroid, center["center"])
         radius = center["rad_strips"]
         if distance <= radius[0]:
-            prob+=0.5*center["trust"]
+            prob += 0.5*center["trust"]
         elif distance >= radius[0] and distance <= radius[1]:
-            prob+=0.3*center["trust"]
+            prob += 0.3*center["trust"]
         elif distance >= radius[1] and distance <= radius[2]:
-            prob+=0.17*center["trust"]
+            prob += 0.17*center["trust"]
         else:
-            prob+=0*center["trust"]
+            prob += 0*center["trust"]
 
     return prob
 
@@ -201,8 +204,6 @@ def check_range_circle(distance, radius):
         prob = -1
     return prob
 
-import math
-import numpy as np
 
 def distance_(origin, destination):
     """
@@ -233,10 +234,10 @@ def distance_(origin, destination):
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
     a = (
-            math.sin(dlat / 2) **2  +
-            math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-            math.sin(dlon / 2) **2 
-         )
+        math.sin(dlat / 2) ** 2 +
+        math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+        math.sin(dlon / 2) ** 2
+    )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     d = radius * c
 
@@ -270,16 +271,17 @@ def displace(lat, lng, theta, distance):
     lat1 = to_radians(lat)
     lng1 = to_radians(lng)
 
-    lat2 = np.arcsin( np.sin(lat1) * np.cos(delta) +
-                        np.cos(lat1) * np.sin(delta) * np.cos(theta) )
+    lat2 = np.arcsin(np.sin(lat1) * np.cos(delta) +
+                     np.cos(lat1) * np.sin(delta) * np.cos(theta))
 
-    lng2 = lng1 + np.arctan2( np.sin(theta) * np.sin(delta) * np.cos(lat1),
-                                np.cos(delta) - np.sin(lat1) * np.sin(lat2))
+    lng2 = lng1 + np.arctan2(np.sin(theta) * np.sin(delta) * np.cos(lat1),
+                             np.cos(delta) - np.sin(lat1) * np.sin(lat2))
 
     lng2 = (lng2 + 3 * np.pi) % (2 * np.pi) - np.pi
 
     return to_degrees(lat2), to_degrees(lng2)
- 
+
+
 def angle_between_vectors_degrees(u, v):
     """Return the angle between two vectors in any dimension space,
     in degrees."""
